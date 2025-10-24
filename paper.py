@@ -186,7 +186,9 @@ class ArxivPaper:
         # use gpt-4o tokenizer for estimation
         enc = tiktoken.encoding_for_model("gpt-4o")
         prompt_tokens = enc.encode(prompt)
-        prompt_tokens = prompt_tokens[:4000]  # truncate to 4000 tokens
+        # Dynamic truncation based on model context minus reserved margin (512 tokens)
+        max_prompt_tokens = llm.n_ctx - 512
+        prompt_tokens = prompt_tokens[:max_prompt_tokens]
         prompt = enc.decode(prompt_tokens)
         
         tldr = llm.generate(
@@ -219,9 +221,11 @@ class ArxivPaper:
             # use gpt-4o tokenizer for estimation
             enc = tiktoken.encoding_for_model("gpt-4o")
             prompt_tokens = enc.encode(prompt)
-            prompt_tokens = prompt_tokens[:4000]  # truncate to 4000 tokens
-            prompt = enc.decode(prompt_tokens)
+            # Dynamic truncation based on model context minus reserved margin (512 tokens)
             llm = get_llm()
+            max_prompt_tokens = llm.n_ctx - 512
+            prompt_tokens = prompt_tokens[:max_prompt_tokens]
+            prompt = enc.decode(prompt_tokens)
             affiliations = llm.generate(
                 messages=[
                     {

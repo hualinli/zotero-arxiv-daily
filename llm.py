@@ -6,6 +6,11 @@ import tiktoken
 
 GLOBAL_LLM = None
 
+# Token budget constants
+RESERVED_TOKENS = 512  # Tokens reserved for generation
+MAX_GENERATION_TOKENS = 512  # Maximum tokens for a single generation
+FALLBACK_CHARS_PER_TOKEN = 4  # Character estimation when tiktoken fails
+
 class LLM:
     def __init__(self, api_key: str = None, base_url: str = None, model: str = None,lang: str = "English"):
         if api_key:
@@ -26,10 +31,9 @@ class LLM:
     def generate(self, messages: list[dict]) -> str:
         # Estimate prompt token count and set max_tokens to prevent exceeding context
         prompt_tokens = self._estimate_prompt_tokens(messages)
-        # Reserve 512 tokens for generation, with a cap of 512 tokens
-        reserved_for_generation = 512
-        available_tokens = max(0, self.n_ctx - prompt_tokens - reserved_for_generation)
-        max_tokens = min(512, available_tokens)
+        # Reserve tokens for generation
+        available_tokens = max(0, self.n_ctx - prompt_tokens - RESERVED_TOKENS)
+        max_tokens = min(MAX_GENERATION_TOKENS, available_tokens)
         
         if isinstance(self.llm, OpenAI):
             max_retries = 3
@@ -59,15 +63,16 @@ class LLM:
     def _estimate_prompt_tokens(self, messages: list[dict]) -> int:
         """Estimate the number of tokens in the prompt using tiktoken."""
         try:
+            # Use gpt-4o tokenizer as a reasonable approximation for all models
             enc = tiktoken.encoding_for_model("gpt-4o")
             # Concatenate all message contents to estimate total tokens
             prompt_text = " ".join([msg.get("content", "") for msg in messages])
             return len(enc.encode(prompt_text))
         except Exception as e:
             logger.warning(f"Failed to estimate tokens using tiktoken: {e}. Using fallback estimation.")
-            # Fallback: rough estimate of 4 characters per token
+            # Fallback: rough estimate based on character count
             prompt_text = " ".join([msg.get("content", "") for msg in messages])
-            return len(prompt_text) // 4
+            return len(prompt_text) // FALLBACK_CHARS_PER_TOKEN
 
 def set_global_llm(api_key: str = None, base_url: str = None, model: str = None, lang: str = "English"):
     global GLOBAL_LLM

@@ -5,7 +5,7 @@ import arxiv
 import tarfile
 import re
 import time
-from llm import get_llm
+from llm import get_llm, RESERVED_TOKENS
 import requests
 from requests.adapters import HTTPAdapter, Retry
 from loguru import logger
@@ -186,8 +186,8 @@ class ArxivPaper:
         # use gpt-4o tokenizer for estimation
         enc = tiktoken.encoding_for_model("gpt-4o")
         prompt_tokens = enc.encode(prompt)
-        # Dynamic truncation based on model context minus reserved margin (512 tokens)
-        max_prompt_tokens = llm.n_ctx - 512
+        # Dynamic truncation based on model context minus reserved margin
+        max_prompt_tokens = llm.n_ctx - RESERVED_TOKENS
         prompt_tokens = prompt_tokens[:max_prompt_tokens]
         prompt = enc.decode(prompt_tokens)
         
@@ -219,11 +219,11 @@ class ArxivPaper:
                 return None
             prompt = f"Given the author information of a paper in latex format, extract the affiliations of the authors in a python list format, which is sorted by the author order. If there is no affiliation found, return an empty list '[]'. Following is the author information:\n{information_region}"
             # use gpt-4o tokenizer for estimation
+            llm = get_llm()
             enc = tiktoken.encoding_for_model("gpt-4o")
             prompt_tokens = enc.encode(prompt)
-            # Dynamic truncation based on model context minus reserved margin (512 tokens)
-            llm = get_llm()
-            max_prompt_tokens = llm.n_ctx - 512
+            # Dynamic truncation based on model context minus reserved margin
+            max_prompt_tokens = llm.n_ctx - RESERVED_TOKENS
             prompt_tokens = prompt_tokens[:max_prompt_tokens]
             prompt = enc.decode(prompt_tokens)
             affiliations = llm.generate(
